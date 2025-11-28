@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 const STORAGE_KEY = "streamhub-miniapp-recent-channels";
-const TWITCH_PARENT = "localhost"; // po konfiguracji domeny zmienimy na stream.profitmilion.com
 
 export default function ClientPage() {
   const searchParams = useSearchParams();
@@ -20,6 +19,9 @@ export default function ClientPage() {
 
   // lokalna historia kanałów
   const [recentChannels, setRecentChannels] = useState<string[]>([]);
+
+  // domena wymagana przez Twitcha w parametrze `parent`
+  const [parentDomain, setParentDomain] = useState<string | null>(null);
 
   const effectiveChannel = channel.trim() || "profitmilion";
 
@@ -39,6 +41,12 @@ export default function ClientPage() {
     } catch {
       // ignorujemy błędy parsowania
     }
+  }, []);
+
+  // pobranie aktualnej domeny jako `parent` dla Twitcha (localhost / vercel / własna domena)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setParentDomain(window.location.hostname);
   }, []);
 
   // zapis kanału do historii (bez duplikatów, max 10)
@@ -147,30 +155,42 @@ export default function ClientPage() {
 
             {/* Video player */}
             <div className="aspect-video mb-4">
-              <iframe
-                title="Twitch player"
-                src={`https://player.twitch.tv/?channel=${encodeURIComponent(
-                  effectiveChannel
-                )}&parent=${TWITCH_PARENT}`}
-                height="100%"
-                width="100%"
-                allowFullScreen={true}
-                frameBorder="0"
-              ></iframe>
+              {parentDomain ? (
+                <iframe
+                  title="Twitch player"
+                  src={`https://player.twitch.tv/?channel=${encodeURIComponent(
+                    effectiveChannel
+                  )}&parent=${encodeURIComponent(parentDomain)}`}
+                  height="100%"
+                  width="100%"
+                  allowFullScreen={true}
+                  frameBorder="0"
+                ></iframe>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm text-neutral-400">
+                  Initializing Twitch player...
+                </div>
+              )}
             </div>
 
             {/* Chat embed – optional */}
             {showChat && (
               <div className="h-[75vh] md:h-[600px] border border-neutral-700 rounded-lg overflow-hidden">
-                <iframe
-                  title="Twitch chat"
-                  src={`https://www.twitch.tv/embed/${encodeURIComponent(
-                    effectiveChannel
-                  )}/chat?parent=${TWITCH_PARENT}`}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                ></iframe>
+                {parentDomain ? (
+                  <iframe
+                    title="Twitch chat"
+                    src={`https://www.twitch.tv/embed/${encodeURIComponent(
+                      effectiveChannel
+                    )}/chat?parent=${encodeURIComponent(parentDomain)}`}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                  ></iframe>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-neutral-400">
+                    Initializing Twitch chat...
+                  </div>
+                )}
               </div>
             )}
 
