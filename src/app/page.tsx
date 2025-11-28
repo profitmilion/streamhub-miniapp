@@ -1,11 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+const STORAGE_KEY = "twitch-miniapp-recent-channels";
 
 export default function Page() {
-  const [channel, setChannel] = useState("monstercat");
+  const searchParams = useSearchParams();
+
+  // Read the `channel` from the URL, e.g. ?channel=profitmilion
+  const channelFromUrl = searchParams.get("channel") || "";
+
+  // Base channel state: from URL if provided, otherwise default
+  const [channel, setChannel] = useState(channelFromUrl || "monstercat");
+
+  // Toggle for showing / hiding chat
+  const [showChat, setShowChat] = useState(true);
+
+  // Local history of recently used channels (stored in localStorage)
+  const [recentChannels, setRecentChannels] = useState<string[]>([]);
 
   const effectiveChannel = channel.trim() || "monstercat";
+
+  // Load recent channels from localStorage on first render
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((item) => typeof item === "string");
+        setRecentChannels(cleaned);
+      }
+    } catch {
+      // ignore parsing errors – we simply skip history
+    }
+  }, []);
+
+  // Save channel to local history (no duplicates, max 10 items)
+  const saveChannelToHistory = (name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+
+    setRecentChannels((prev) => {
+      const withoutDuplicate = prev.filter(
+        (c) => c.toLowerCase() !== normalized.toLowerCase()
+      );
+      const updated = [normalized, ...withoutDuplicate].slice(0, 10);
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      }
+
+      return updated;
+    });
+  };
+
+  // Clean input: if user pastes a full Twitch URL, extract only the channel name
+  const handleChannelChange = (raw: string) => {
+    const cleaned = raw
+      .replace("https://", "")
+      .replace("http://", "")
+      .replace("www.", "")
+      .replace("twitch.tv/", "")
+      .split("/")[0]; // take only the part before any extra slash
+
+    setChannel(cleaned);
+  };
+
+  // Suggestions from history based on current input
+  const suggestions =
+    channel.trim().length === 0
+      ? recentChannels
+      : recentChannels.filter(
+          (c) =>
+            c.toLowerCase().startsWith(channel.trim().toLowerCase()) &&
+            c.toLowerCase() !== channel.trim().toLowerCase()
+        );
 
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -17,30 +91,58 @@ export default function Page() {
         {/* Twitch channel input */}
         <div className="mb-6">
           <label className="block text-sm mb-2 text-neutral-300">
-            Enter Twitch channel name:
+            Enter Twitch channel name or paste a Twitch link:
           </label>
 
           <input
             type="text"
             value={channel}
-            onChange={(e) => setChannel(e.target.value)}
+            onChange={(e) => handleChannelChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                saveChannelToHistory(effectiveChannel);
+              }
+            }}
             className="px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-700 text-white w-full outline-none"
-            placeholder="e.g. profitmilion"
+            placeholder="e.g. profitmilion or https://www.twitch.tv/profitmilion"
           />
 
-          <p className="text-xs text-neutral-500 mt-2">
-            Type any Twitch channel. The player and chat below will update
-            automatically.
-          </p>
+          {/* Suggestions from recent channels */}
+          {suggestions.length > 0 && (
+            <div className="mt-2 bg-neutral-900 border border-neutral-700 rounded-lg text-sm max-h-40 overflow-y-auto">
+              {suggestions.map((ch) => (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => setChannel(ch)}
+                  className="w-full text-left px-3 py-2 hover:bg-neutral-800"
+                >
+                  {ch}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-6">
-          {/* LEFT: Twitch Player + Chat */}
+          {/* LEFT: Twitch Player + optional Chat */}
           <section className="border border-neutral-700 rounded-xl p-4 bg-neutral-900/60">
-            <h2 className="text-lg font-medium mb-3">
-              Twitch Player – channel:{" "}
-              <span className="font-mono">{effectiveChannel}</span>
-            </h2>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <h2 className="text-lg font-medium">
+                Twitch Player – channel:{" "}
+                <span className="font-mono">{effectiveChannel}</span>
+              </h2>
+
+              {/* Chat toggle button */}
+              <button
+                type="button"
+                onClick={() => setShowChat((prev) => !prev)}
+                className="text-xs px-3 py-1 rounded-full border border-neutral-600 bg-neutral-800 hover:bg-neutral-700 transition"
+              >
+                {showChat ? "Hide chat" : "Show chat"}
+              </button>
+            </div>
 
             {/* Video player */}
             <div className="aspect-video mb-4">
@@ -56,19 +158,26 @@ export default function Page() {
               ></iframe>
             </div>
 
-            {/* Chat embed */}
-            <div className="h-[75vh] md:h-[600px] border border-neutral-700 rounded-lg overflow-hidden">
-              <iframe
-                title="Twitch chat"
-                src={`https://www.twitch.tv/embed/${encodeURIComponent(
-                  effectiveChannel
-                )}/chat?parent=localhost`}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-              ></iframe>
-            </div>
+            {/* Chat embed – optional */}
+            {showChat && (
+              <div className="h-[75vh] md:h-[600px] border border-neutral-700 rounded-lg overflow-hidden">
+                <iframe
+                  title="Twitch chat"
+                  src={`https://www.twitch.tv/embed/${encodeURIComponent(
+                    effectiveChannel
+                  )}/chat?parent=localhost`}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                ></iframe>
+              </div>
+            )}
 
+            <p className="text-[11px] text-neutral-500 mt-2">
+              To send messages in the chat you must be logged in to Twitch in
+              this browser. Without login, the chat is view-only – this is a
+              Twitch limitation, not this mini-app.
+            </p>
           </section>
 
           {/* RIGHT: Farcaster panel placeholder */}
@@ -80,7 +189,7 @@ export default function Page() {
             </p>
 
             <ul className="text-sm text-neutral-300 list-disc list-inside space-y-1">
-              <li>Auto-cast to Warpcast</li>
+              <li>Auto-cast to Warpcast for the current channel</li>
               <li>Channel info and metadata</li>
               <li>Follow / join buttons and links</li>
               <li>On-chain interactions on Base (tips, NFTs, etc.)</li>
