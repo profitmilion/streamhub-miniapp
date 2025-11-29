@@ -2,36 +2,38 @@ import type { Metadata } from "next";
 import React from "react";
 import "./globals.css";
 
+// tymczasowy obrazek pod mini-appkę (prosty placeholder)
+const OG_IMAGE_URL =
+  "https://placehold.co/1200x630/png?text=Twitch+Mini+App";
+
 export const metadata: Metadata = {
   title: "Twitch Mini-App",
   description: "Twitch Live Mini-App for Farcaster",
   other: {
-    // Definicja Mini-App dla Farcastera
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: "https://streamhub-miniapp.vercel.app/og-image.png", // docelowo tu możesz dać swój obrazek
+      imageUrl: OG_IMAGE_URL,
       button: {
         title: "Open Twitch Mini-App",
         action: {
           type: "launch_frame",
           name: "Twitch Live Mini-App",
           url: "https://streamhub-miniapp.vercel.app/",
-          splashImageUrl: "https://streamhub-miniapp.vercel.app/og-image.png",
+          splashImageUrl: OG_IMAGE_URL,
           splashBackgroundColor: "#000000",
         },
       },
     }),
-    // Opcjonalnie: dodatkowy wpis dla starszych klientów / kompatybilności
     "fc:frame": JSON.stringify({
       version: "1",
-      imageUrl: "https://streamhub-miniapp.vercel.app/og-image.png",
+      imageUrl: OG_IMAGE_URL,
       button: {
         title: "Open Twitch Mini-App",
         action: {
           type: "launch_frame",
           name: "Twitch Live Mini-App",
           url: "https://streamhub-miniapp.vercel.app/",
-          splashImageUrl: "https://streamhub-miniapp.vercel.app/og-image.png",
+          splashImageUrl: OG_IMAGE_URL,
           splashBackgroundColor: "#000000",
         },
       },
