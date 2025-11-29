@@ -93,7 +93,8 @@ export default function ClientPage() {
                   title="Twitch player"
                   src={`https://player.twitch.tv/?channel=${encodeURIComponent(
                     effectiveChannel
-                  )}&parent=${encodeURIComponent(parentDomain)}`}
+                  )}&parent=streamhub-miniapp.vercel.app&parent=farcaster.xyz&parent=webview.farcaster.xyz&parent=warpcast.com`}
+
                   height="100%"
                   width="100%"
                   allowFullScreen
@@ -114,7 +115,8 @@ export default function ClientPage() {
                     title="Twitch chat"
                     src={`https://www.twitch.tv/embed/${encodeURIComponent(
                       effectiveChannel
-                    )}/chat?parent=${encodeURIComponent(parentDomain)}`}
+                    )}/chat?parent=streamhub-miniapp.vercel.app&parent=farcaster.xyz&parent=webview.farcaster.xyz&parent=warpcast.com`}
+
                     width="100%"
                     height="100%"
                     frameBorder="0"
